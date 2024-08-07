@@ -2,10 +2,6 @@
 // Licensed under the MIT License.
 
 use crate::{
-    arrays::{
-        QirArray, __quantum__rt__array_concatenate, __quantum__rt__array_update_reference_count,
-    },
-    tuples::{__quantum__rt__tuple_copy, __quantum__rt__tuple_update_reference_count},
     update_counts,
 };
 use std::{cell::RefCell, mem::ManuallyDrop, rc::Rc};
@@ -44,61 +40,14 @@ pub unsafe extern "C" fn __quantum__rt__callable_invoke(
     let call = &*callable;
     let index =
         usize::from(*call.is_adj.borrow()) + (if *call.ctls_count.borrow() > 0 { 2 } else { 0 });
-
-    // Collect any nested controls into a single control list.
-    let mut args_copy: *mut *const Vec<u8> = std::ptr::null_mut();
-    if !args_tup.is_null() {
-        // Copy the tuple so we can potentially edit it.
-        args_copy = __quantum__rt__tuple_copy(args_tup.cast::<*const Vec<u8>>(), true);
-
-        if *call.ctls_count.borrow() > 0 {
-            // If there are any controls, increment the reference count on the control list. This is just
-            // to balance the decrement that will happen in the loop and at the end of invoking the callable
-            // to ensure the original, non-owned list does not get incorrectly cleaned up.
-            __quantum__rt__array_update_reference_count(*args_copy.cast::<*const QirArray>(), 1);
-
-            let mut ctl_count = *call.ctls_count.borrow();
-            while ctl_count > 1 {
-                let ctls = *args_copy.cast::<*const QirArray>();
-                let inner_tuple = *args_copy
-                    .cast::<*const QirArray>()
-                    .wrapping_add(1)
-                    .cast::<*mut *const Vec<u8>>();
-                let inner_ctls = *inner_tuple.cast::<*const QirArray>();
-                let new_ctls = __quantum__rt__array_concatenate(ctls, inner_ctls);
-                let new_args = __quantum__rt__tuple_copy(inner_tuple, true);
-                *new_args.cast::<*const QirArray>() = new_ctls;
-
-                // Decrementing the reference count is either the extra count added above or the new
-                // list created when performing concatenate above. In the latter case, the concatenated
-                // list will get cleaned up, preventing memory from leaking.
-                __quantum__rt__array_update_reference_count(
-                    *args_copy.cast::<*const QirArray>(),
-                    -1,
-                );
-                // Decrement the count on the copy to clean it up as well, since we created a new copy
-                // with the updated controls list.
-                __quantum__rt__tuple_update_reference_count(args_copy, -1);
-                args_copy = new_args;
-                ctl_count -= 1;
-            }
-        }
-    }
-
     (*call
         .func_table
         .wrapping_add(index)
         .cast::<extern "C" fn(*mut u8, *mut u8, *mut u8)>())(
         call.cap_tuple,
-        args_copy.cast::<u8>(),
+        args_tup,
         res_tup,
     );
-    if *call.ctls_count.borrow() > 0 {
-        __quantum__rt__array_update_reference_count(*args_copy.cast::<*const QirArray>(), -1);
-    }
-    if !args_copy.is_null() {
-        __quantum__rt__tuple_update_reference_count(args_copy, -1);
-    }
 }
 
 #[no_mangle]
