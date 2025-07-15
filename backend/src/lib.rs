@@ -25,7 +25,7 @@ use std::ffi::{c_void, CString};
 use std::io::Write;
 use std::mem::size_of;
 
-use result_bool::{
+pub use result_bool::{
     __quantum__rt__result_equal, __quantum__rt__result_get_one, __quantum__rt__result_get_zero,
 };
 
