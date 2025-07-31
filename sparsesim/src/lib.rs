@@ -220,13 +220,10 @@ impl QuantumSim {
         }
     }
 
-    /// Prints the current state vector to standard output with integer labels for the states, skipping any
-    /// states with zero amplitude.
-    #[allow(clippy::missing_panics_doc)] // reason="Panics can only occur if the keys are not present in the map, which should not happen."
-    #[must_use]
-    pub fn dump(&mut self) -> String {
-        // Swap all the entries in the state to be ordered by qubit identifier. This makes
-        // interpreting the state easier for external consumers that don't have access to the id map.
+    /// Swap all the entries in the state to be ordered by qubit identifier.
+    /// This makes interpreting the state easier for external consumers that
+    /// don't have access to the id map.
+    fn reorder_entries_to_match_id_order(&mut self) {
         let mut sorted_keys: Vec<usize> = self.id_map.keys().copied().collect();
         self.flush_queue(&sorted_keys, FlushLevel::HRxRy);
 
@@ -248,7 +245,14 @@ impl QuantumSim {
                     .expect("key should be present in map")) = index;
             }
         });
+    }
 
+    /// Prints the current state vector to standard output with integer labels for the states, skipping any
+    /// states with zero amplitude.
+    #[allow(clippy::missing_panics_doc)] // reason="Panics can only occur if the keys are not present in the map, which should not happen."
+    #[must_use]
+    pub fn dump(&mut self) -> String {
+        self.reorder_entries_to_match_id_order();
         self.dump_impl(false)
     }
 
@@ -286,6 +290,31 @@ impl QuantumSim {
         output.write_str("]").expect("Failed to write output");
         output.write_str(&nl).expect("Failed to write output");
         output
+    }
+
+    /// Returns the current state vector as a dense vector.
+    pub fn get_state_vector(&mut self) -> Vec<Complex64> {
+        self.reorder_entries_to_match_id_order();
+
+        let mut sorted_keys = self.state.keys().collect::<Vec<_>>();
+        sorted_keys.sort_unstable();
+
+        assert!(!sorted_keys.is_empty(), "state keys should never be empty");
+        let num_bits = self
+            .id_map
+            .len()
+            .try_into()
+            .expect("State vector would be too large");
+        let state_len = 2usize
+            .checked_pow(num_bits)
+            .expect("State vector would be too large");
+        let mut state = vec![Complex64::ZERO; state_len];
+
+        for key in sorted_keys {
+            let key_as_usize: usize = key.try_into().expect("State vector would be too large");
+            state[key_as_usize] = self.state.get(key).copied().unwrap_or(Complex64::ZERO);
+        }
+        state
     }
 
     /// Checks the probability of parity measurement in the computational basis for the given set of
