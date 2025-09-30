@@ -36,7 +36,7 @@ const DEFAULT_INITIAL_SIZE: usize = 50;
 /// `QuantumSim` represents an independant simulation.
 pub struct QuantumSim {
     /// The structure that describes the current quantum state.
-    pub(crate) state: SparseState,
+    pub state: SparseState,
 
     /// The mapping from qubit identifiers to internal state locations.
     pub(crate) id_map: IndexMap<usize, usize>,
