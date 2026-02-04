@@ -26,7 +26,7 @@ use rand::{Rng, SeedableRng, rngs::StdRng};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::{cell::RefCell, f64::consts::FRAC_1_SQRT_2, fmt::Write};
 
-pub type SparseState = Vec<(BigUint, Complex64)>;
+type SparseState = Vec<(BigUint, Complex64)>;
 type SparseStateMap = FxHashMap<BigUint, Complex64>;
 
 const QUEUE_LIMIT: usize = 10_000;
@@ -209,11 +209,13 @@ impl QuantumSim {
         self.id_map.remove(id);
     }
 
-    /// Swap all the entries in the state to be ordered by qubit identifier. This makes
-    /// interpreting the state easier for external consumers that don't have access to the id map.
-    /// Also sorts entries in the sparse state by bitstring.
+    /// Prints the current state vector to standard output with integer labels for the states, skipping any
+    /// states with zero amplitude.
     #[allow(clippy::missing_panics_doc)] // reason="Panics can only occur if the keys are not present in the map, which should not happen."
-    fn reorder_by_external_id(&mut self) {
+    #[must_use]
+    pub fn dump(&mut self) -> String {
+        // Swap all the entries in the state to be ordered by qubit identifier. This makes
+        // interpreting the state easier for external consumers that don't have access to the id map.
         let mut sorted_keys: Vec<usize> = self.id_map.iter().map(|(k, _)| k).collect();
         self.flush_queue(&sorted_keys, FlushLevel::HRxRy);
 
@@ -236,20 +238,6 @@ impl QuantumSim {
             }
         });
 
-        self.state.sort_unstable_by(|a, b| a.0.cmp(&b.0));
-    }
-
-    /// Returns sparse state vector
-    pub fn get_sparse_state(&mut self) -> SparseState {
-        self.reorder_by_external_id();
-        self.state.clone()
-    }
-
-    /// Prints the current state vector to standard output with integer labels for the states, skipping any
-    /// states with zero amplitude.
-    #[must_use]
-    pub fn dump(&mut self) -> String {
-        self.reorder_by_external_id();
         self.dump_impl(false)
     }
 
@@ -274,6 +262,7 @@ impl QuantumSim {
             .write_str("STATE: [ ")
             .expect("Failed to write output");
 
+        self.state.sort_unstable_by(|a, b| a.0.cmp(&b.0));
         for (key, value) in &self.state {
             output
                 .write_str(&format!("|{key}\u{27e9}: {value}, "))
