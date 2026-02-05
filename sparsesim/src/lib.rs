@@ -172,6 +172,18 @@ impl QuantumSim {
         new_key
     }
 
+    pub fn init_alloc(&mut self, vec: Vec<(BigUint, Complex64)>, num_qbits: usize) -> Vec<usize> {
+        // TODO: Make new qubits allocated on the MSB side (instead of the LSB side)
+        self.state = self.state.into_iter()
+            .flat_map(
+                move |(x, z)|
+                    vec.clone().into_iter().map(
+                        move |(x2, z2)| (x.clone() << num_qbits | x2, z * z2)))
+            .collect();
+        SparseVec { v, num_qbits: self.num_qbits + num_qbits }
+        // TODO: return appropriate indices
+    }
+
     /// Releases the given qubit, collapsing its state in the process. After release that identifier is
     /// no longer valid for use in other functions and will cause an error if used.
     /// # Panics
