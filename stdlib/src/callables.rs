@@ -37,12 +37,14 @@ pub unsafe extern "C" fn __quantum__rt__callable_invoke(
 ) {
     unsafe {
         let call = &*callable;
-        let index =
-            usize::from(*call.is_adj.borrow()) + (if *call.ctls_count.borrow() > 0 { 2 } else { 0 });
+        let index = usize::from(*call.is_adj.borrow())
+            + (if *call.ctls_count.borrow() > 0 { 2 } else { 0 });
         (*call
             .func_table
             .wrapping_add(index)
-            .cast::<extern "C" fn(*mut u8, *mut u8, *mut u8)>())(call.cap_tuple, args_tup, res_tup);
+            .cast::<extern "C" fn(*mut u8, *mut u8, *mut u8)>())(
+            call.cap_tuple, args_tup, res_tup
+        );
     }
 }
 

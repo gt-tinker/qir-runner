@@ -90,6 +90,14 @@ impl<K, V> IndexMap<K, V> {
         }
     }
 
+    #[must_use]
+    pub fn keys(&self) -> Keys<'_, V> {
+        Keys {
+            base: self.values.iter(),
+            counter: 0,
+        }
+    }
+
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(K, &V) -> bool,
@@ -304,6 +312,24 @@ impl<'a, V> Iterator for Values<'a, V> {
             if let Some(value) = self.base.next()? {
                 break Some(value);
             }
+        }
+    }
+}
+
+pub struct Keys<'a, V> {
+    base: slice::Iter<'a, Option<V>>,
+    counter: usize,
+}
+
+impl<'a, V> Iterator for Keys<'a, V> {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(_) = self.base.next()? {
+                break Some(self.counter);
+            }
+            self.counter += 1;
         }
     }
 }
