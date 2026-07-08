@@ -172,8 +172,8 @@ impl QuantumSim {
         new_key
     }
 
-    /// Order of bits passed in is "Stefan Order" (LSB on the right)
     pub fn init_alloc(&mut self, vec: Vec<(BigUint, Complex64)>, num_qbits: usize) -> Vec<usize> {
+        let internal_next = self.id_map.values().max().map(|val| val + 1).unwrap_or(0);
         self.state = self
             .state
             .clone()
@@ -181,10 +181,9 @@ impl QuantumSim {
             .flat_map(move |(x, z)| {
                 vec.clone()
                     .into_iter()
-                    .map(move |(x2, z2)| (x2 << num_qbits | x.clone(), z * z2))
+                    .map(move |(x2, z2)| (x2 << internal_next | x.clone(), z * z2))
             })
             .collect();
-        let internal_next = self.id_map.values().max().map(|val| val + 1).unwrap_or(0);
         let external_next = self.id_map.keys().max().map(|val| val + 1).unwrap_or(0);
         for i in 0..num_qbits {
             self.id_map.insert(external_next + i, internal_next + i);
