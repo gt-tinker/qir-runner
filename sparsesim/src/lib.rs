@@ -172,6 +172,7 @@ impl QuantumSim {
         new_key
     }
 
+    /// Order of bits passed in is "Stefan Order" (LSB on the right)
     pub fn init_alloc(&mut self, vec: Vec<(BigUint, Complex64)>, num_qbits: usize) -> Vec<usize> {
         let internal_next = self.id_map.values().max().map(|val| val + 1).unwrap_or(0);
         self.state = self
