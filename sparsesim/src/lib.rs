@@ -36,7 +36,7 @@ const DEFAULT_INITIAL_SIZE: usize = 50;
 /// `QuantumSim` represents an independant simulation.
 pub struct QuantumSim {
     /// The structure that describes the current quantum state.
-    pub(crate) state: SparseState,
+    pub state: SparseState,
 
     /// The mapping from qubit identifiers to internal state locations.
     pub(crate) id_map: IndexMap<usize, usize>,
@@ -170,6 +170,28 @@ impl QuantumSim {
 
         // Return the new ID that was used.
         new_key
+    }
+
+    /// Order of bits passed in is "Stefan Order" (LSB on the right)
+    pub fn init_alloc(&mut self, vec: Vec<(BigUint, Complex64)>, num_qbits: usize) -> Vec<usize> {
+        let internal_next = self.id_map.values().max().map(|val| val + 1).unwrap_or(0);
+        self.state = self
+            .state
+            .clone()
+            .into_iter()
+            .flat_map(move |(x, z)| {
+                vec.clone()
+                    .into_iter()
+                    .map(move |(x2, z2)| (x2 << internal_next | x.clone(), z * z2))
+            })
+            .collect();
+        let external_next = self.id_map.keys().max().map(|val| val + 1).unwrap_or(0);
+        for i in 0..num_qbits {
+            self.id_map.insert(external_next + i, internal_next + i);
+        }
+        return (external_next..(external_next + num_qbits))
+            .into_iter()
+            .collect();
     }
 
     /// Releases the given qubit, collapsing its state in the process. After release that identifier is
